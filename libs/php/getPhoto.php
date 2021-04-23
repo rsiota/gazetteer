@@ -48,8 +48,9 @@ curl_multi_close($mh);
 $urls = array();
 foreach ($result as $i) {
 	$pattern = "/https:([^;]*)h400/";
-	preg_match($pattern, $i, $url);
-	array_push($urls, $url[0]);
+	if(preg_match($pattern, $i, $url)) {
+		array_push($urls, $url[0]);
+	}
 }
 
 $output['status']['code'] = "200";

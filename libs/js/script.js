@@ -51,6 +51,7 @@ var search = document.getElementById("search");
 var isFlickity;
 var $slider;
 var currentLocation = {};
+var currencyCode;
 
 
 getLocation();
@@ -65,8 +66,14 @@ displayBorders(borders, map, flagColors, search, returnSearch, countryCodes, cit
 showCountry();
 
 $(window).load(function() {
+  if (jQuery.isEmptyObject(currentLocation)) {
+    var lat = 51.5074;
+    var lng = 0.1278;
+    currentLocation['coords'] = [lat, lng];
+    getLocationCountry(lat, lng);
+  }
   animateLoader(map, currentLocation);
-appendCountries(countryNames, map, countryCodes);
+  appendCountries(countryNames, map, countryCodes);
 });
 
 // Animate/expand country info card on click
@@ -128,7 +135,6 @@ function showPosition(position) {
 // Main Ajax request function for country information
 function returnSearch() {
 
-  var currencyCode;
   var alpha2Code;
 
   $.ajax({
@@ -240,21 +246,22 @@ function returnSearch() {
   });
 
   // Ajax request to Openexchange API
-    $.ajax({
-      url: "libs/php/getCurrencyInfo.php",
-      type: 'POST',
-      dataType: 'json',
-      cache: 'false',
-      success: function(result) {
-        if (result.status.name == "OK") {
-          const exchangeRate = '1 ' + currencyCode + ' | ' + (result['data']['rates'][currencyCode]).toFixed(4) + ' USD';
-          $('#exchangeRate').html(exchangeRate);
-        }
-      },
-      error: function(jqXHR, textStatus, errorThrown) {
-        console.log(errorThrown);
+  $.ajax({
+    url: "libs/php/getCurrencyInfo.php",
+    type: 'POST',
+    dataType: 'json',
+    cache: 'false',
+    async: 'false',
+    success: function(result) {
+      if (result.status.name == "OK") {
+        const exchangeRate = '1 ' + currencyCode + ' | ' + (result['data']['rates'][currencyCode]).toFixed(4) + ' USD';
+        $('#exchangeRate').html(exchangeRate);
       }
-    });
+    },
+    error: function(jqXHR, textStatus, errorThrown) {
+      console.log(errorThrown);
+    }
+  });
 };
 
 function getLocationCountry(lat, lng) {
@@ -291,6 +298,7 @@ function getPhoto(place) {
     type: 'POST',
     dataType: 'json',
     cache: 'false',
+    async: 'false',
     data: {
       place: place,
     },
@@ -298,59 +306,46 @@ function getPhoto(place) {
       if (result.status.name == "OK") {
         var urlList = result['data'];
 
-  // var urlList = [
-  //   "../slider/GB/aberdeen-500px.jpg",
-  //   "../slider/GB/armagh-500px.jpg",
-  //   "../slider/GB/bangor,_gwynedd-500px.jpg",
-  //   "../slider/GB/belfast-500px.jpg",
-  //   "../slider/GB/birmingham-500px.jpg",
-  //   "../slider/GB/bath,_somerset-500px.jpg",
-  //   "../slider/GB/brighton_and_hove-500px.jpg",
-  //   "../slider/GB/canterbury-500px.jpg",
-  //   "../slider/GB/chichester-500px.jpg",
-  //   "../slider/GB/derby-500px.jpg"
-  // ];
+        endFlick();
+        $.when(displayPhotos()).then(iniFlick());
 
-  endFlick();
-  $.when(displayPhotos()).then(iniFlick());
+        function displayPhotos() {
+          var slider = document.getElementById("city-slider");
 
-  function displayPhotos() {
-    var slider = document.getElementById("city-slider");
+          slider.innerHTML = '';
+          for (var i = 0; i < urlList.length; i++) {
+            var cityImg = document.createElement('IMG');
+            cityImg.src = urlList[i];
+            cityImg.className = 'slide';
+            cityImg.referrerPolicy = 'no-referrer';
+            slider.appendChild(cityImg);
+          }
+        }
 
-    slider.innerHTML = '';
-    for (var i = 0; i < urlList.length; i++) {
-      var cityImg = document.createElement('IMG');
-      cityImg.src = urlList[i];
-      cityImg.className = 'slide';
-      cityImg.referrerPolicy = 'no-referrer';
-      slider.appendChild(cityImg);
+        function iniFlick() {
+          setTimeout(function() {
+            $slider = $('.slider').flickity({
+              contain: true,
+              freeScroll: true,
+              fullscreen: true,
+              wrapAround: true,
+              autoPlay: true
+            });
+          }, 500)
+          isFlickity = true;
+        }
+
+        function endFlick() {
+          if (isFlickity) {
+            $slider.flickity('destroy');
+          }
+        }
+      }
+    },
+    error: function(jqXHR, textStatus, errorThrown) {
+      console.log(errorThrown);
     }
-  }
-
-  function iniFlick() {
-    setTimeout(function() {
-      $slider = $('.slider').flickity({
-        contain: true,
-        freeScroll: true,
-        fullscreen: true,
-        wrapAround: true,
-        autoPlay: true
-      });
-    }, 500)
-    isFlickity = true;
-  }
-
-  function endFlick() {
-    if (isFlickity) {
-      $slider.flickity('destroy');
-    }
-  }
-}
-  },
-  error: function(jqXHR, textStatus, errorThrown) {
-    console.log(errorThrown);
-  }
-});
+  });
 }
 
 function getWeather(lat, lon) {
